@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "map-georeferencer"
+version = "0.1.0"
+description = "A Python toolkit for georeferencing raster maps and imagery from ground control points, with transformation accuracy assessment and GeoTIFF export."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "Raphael Perrut" }
+]
+
+dependencies = [
+    "numpy>=2.0,<3",
+    "pyproj>=3.7,<4",
+    "rasterio>=1.4,<2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
