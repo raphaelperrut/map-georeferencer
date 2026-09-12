@@ -7,6 +7,9 @@ from map_georeferencer import __version__
 from map_georeferencer.pipeline import (
     georeference_from_gcps,
 )
+from map_georeferencer.report import (
+    write_accuracy_report,
+)
 
 
 app = typer.Typer(
@@ -86,6 +89,11 @@ def georeference(
             "in target CRS units."
         ),
     ),
+    report: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Optional JSON accuracy report.",
+    ),
     resampling: str = typer.Option(
         "bilinear",
         "--resampling",
@@ -120,6 +128,11 @@ def georeference(
             resolution=resolution,
             resampling=method,
         )
+        if report is not None:
+            write_accuracy_report(
+                result,
+                report,
+            )
     except ValueError as exc:
         typer.echo(
             f"Error: {exc}",
@@ -141,6 +154,10 @@ def georeference(
     typer.echo(
         f"GCPs: {len(result.residuals)}"
     )
+    if report is not None:
+        typer.echo(
+            f"Report: {report.resolve()}"
+        )
 
 
 if __name__ == "__main__":

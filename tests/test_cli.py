@@ -149,3 +149,35 @@ def test_invalid_gcps_return_error(
     assert "At least three" in result.output
 
     assert not output_path.exists()
+
+def test_georeference_command_writes_report(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "input.tif"
+    gcp_path = tmp_path / "gcps.csv"
+    output_path = tmp_path / "output.tif"
+    report_path = tmp_path / "accuracy.json"
+
+    create_input_raster(input_path)
+    create_gcp_file(gcp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "georeference",
+            str(input_path),
+            str(gcp_path),
+            str(output_path),
+            "--crs",
+            "EPSG:31983",
+            "--report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+
+    assert output_path.exists()
+    assert report_path.exists()
+
+    assert "Report:" in result.stdout
