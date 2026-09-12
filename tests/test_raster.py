@@ -8,6 +8,7 @@ from affine import Affine
 from map_georeferencer.raster import (
     georeference_raster,
     to_rasterio_affine,
+    warp_to_north_up,
 )
 from map_georeferencer.transform import (
     AffineTransformation,
@@ -229,4 +230,202 @@ def test_invalid_target_crs_raises_error(
             output_path=tmp_path / "output.tif",
             transformation=transformation,
             target_crs="INVALID_CRS",
+        )
+
+def test_warp_to_north_up_removes_rotation(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "rotated.tif"
+    output_path = tmp_path / "north_up.tif"
+
+    data = np.arange(
+        100,
+        dtype=np.uint8,
+    ).reshape(
+        10,
+        10,
+    )
+
+    rotated_transform = Affine(
+        0.95,
+        0.25,
+        500000.0,
+        0.25,
+        -0.95,
+        7400000.0,
+    )
+
+    with rasterio.open(
+        input_path,
+        "w",
+        driver="GTiff",
+        width=10,
+        height=10,
+        count=1,
+        dtype=data.dtype,
+        crs="EPSG:31983",
+        transform=rotated_transform,
+    ) as dataset:
+        dataset.write(
+            data,
+            1,
+        )
+
+    warp_to_north_up(
+        input_path,
+        output_path,
+    )
+
+    assert output_path.exists()
+
+    with rasterio.open(output_path) as dataset:
+        assert dataset.crs is not None
+        assert dataset.crs.to_epsg() == 31983
+
+        assert dataset.transform.b == pytest.approx(
+            0.0
+        )
+        assert dataset.transform.d == pytest.approx(
+            0.0
+        )
+
+        assert dataset.transform.a > 0
+        assert dataset.transform.e < 0
+
+        assert dataset.width > 0
+        assert dataset.height > 0
+
+
+def test_warp_to_north_up_uses_requested_resolution(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "input.tif"
+    output_path = tmp_path / "output.tif"
+
+    data = np.ones(
+        (10, 10),
+        dtype=np.uint8,
+    )
+
+    transform = Affine(
+        2.0,
+        0.0,
+        500000.0,
+        0.0,
+        -2.0,
+        7400000.0,
+    )
+
+    with rasterio.open(
+        input_path,
+        "w",
+        driver="GTiff",
+        width=10,
+        height=10,
+        count=1,
+        dtype=data.dtype,
+        crs="EPSG:31983",
+        transform=transform,
+    ) as dataset:
+        dataset.write(
+            data,
+            1,
+        )
+
+    warp_to_north_up(
+        input_path,
+        output_path,
+        resolution=1.0,
+    )
+
+    with rasterio.open(output_path) as dataset:
+        assert dataset.transform.a == pytest.approx(
+            1.0
+        )
+        assert dataset.transform.e == pytest.approx(
+            -1.0
+        )
+
+
+def test_warp_preserves_multiple_bands(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "rgb.tif"
+    output_path = tmp_path / "output.tif"
+
+    data = np.array(
+        [
+            [
+                [10, 20],
+                [30, 40],
+            ],
+            [
+                [50, 60],
+                [70, 80],
+            ],
+            [
+                [90, 100],
+                [110, 120],
+            ],
+        ],
+        dtype=np.uint8,
+    )
+
+    with rasterio.open(
+        input_path,
+        "w",
+        driver="GTiff",
+        width=2,
+        height=2,
+        count=3,
+        dtype=data.dtype,
+        crs="EPSG:31983",
+        transform=Affine(
+            2.0,
+            0.5,
+            500000.0,
+            0.0,
+            -2.0,
+            7400000.0,
+        ),
+    ) as dataset:
+        dataset.write(data)
+
+    warp_to_north_up(
+        input_path,
+        output_path,
+    )
+
+    with rasterio.open(output_path) as dataset:
+        assert dataset.count == 3
+
+
+def test_warp_missing_input_raises_error(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="does not exist",
+    ):
+        warp_to_north_up(
+            tmp_path / "missing.tif",
+            tmp_path / "output.tif",
+        )
+
+
+def test_warp_invalid_resolution_raises_error(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "input.tif"
+
+    create_test_raster(input_path)
+
+    with pytest.raises(
+        ValueError,
+        match="Resolution must be greater than zero",
+    ):
+        warp_to_north_up(
+            input_path,
+            tmp_path / "output.tif",
+            resolution=0.0,
         )
