@@ -1,5 +1,9 @@
 # Map Georeferencer
 
+[![Tests](https://github.com/raphaelperrut/map-georeferencer/actions/workflows/tests.yml/badge.svg)](https://github.com/raphaelperrut/map-georeferencer/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 A Python toolkit for georeferencing raster maps and imagery from ground
 control points, with affine transformation estimation, residual
 analysis, RMSE calculation, north-up warping and GeoTIFF export.
